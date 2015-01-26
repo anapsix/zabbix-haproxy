@@ -34,7 +34,7 @@ Include=/etc/zabbix/zabbix_agentd.d/
 * Import `haproxy_zbx_template.xml` template via Zabbix Web UI interface (provided by `zabbix-frontend-php` package)
 * Configure HAProxy control socket
   - [Configure HAProxy](http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.2) to listen on `/run/haproxy/info.sock`
-  - or set custom socket path in checks (set `{$HAPROXY_SOCK}` macro to your custom socket path)
+  - or set custom socket path in checks (set `{$HAPROXY_SOCK}` template macro to your custom socket path)
   - or update `userparameter_haproxy.conf` and `haproxy_discovery.sh` with your socket path
 ```
 # haproxy.conf snippet
@@ -66,7 +66,7 @@ Anastas Dancha <anapsix@random.io>
 
 ### License
 
-[MIT](http://opensource.org/licenses/MIT)
+[MIT License](http://opensource.org/licenses/MIT)
 
     The MIT License (MIT)
     
