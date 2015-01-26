@@ -20,42 +20,43 @@ This repo contains everything you need to discover and monitor HAProxy frontends
 
 ### Instructions
 
-1. Place `userparameter_haproxy.conf` into `/etc/zabbix/zabbix_agentd.d/` directory, assuming you have Include set in `zabbix_agend.conf`, like so:
-
-    ### Option: Include
-    # You may include individual files or all files in a directory in the configuration file.
-    # Installing Zabbix will create include directory in /usr/local/etc, unless modified during the compile time.
-    #
-    # Mandatory: no
-    # Default:
-    Include=/etc/zabbix/zabbix_agentd.d/
-
-2. Place `haproxy_discovery.sh` into `/usr/local/bin/` directory and make sure it's executable (`sudo chmod +x /usr/local/bin/haproxy_discovery.sh`)
-3. Import `haproxy_zbx_template.xml` template via Zabbix Web UI interface (provided by `zabbix-frontend-php` package)
-4. Configure HAProxy control socket
+* Place `userparameter_haproxy.conf` into `/etc/zabbix/zabbix_agentd.d/` directory, assuming you have Include set in `zabbix_agend.conf`, like so:
+```
+### Option: Include
+# You may include individual files or all files in a directory in the configuration file.
+# Installing Zabbix will create include directory in /usr/local/etc, unless modified during the compile time.
+#
+# Mandatory: no
+# Default:
+Include=/etc/zabbix/zabbix_agentd.d/
+```
+* Place `haproxy_discovery.sh` into `/usr/local/bin/` directory and make sure it's executable (`sudo chmod +x /usr/local/bin/haproxy_discovery.sh`)
+* Import `haproxy_zbx_template.xml` template via Zabbix Web UI interface (provided by `zabbix-frontend-php` package)
+* Configure HAProxy control socket
   - [Configure HAProxy](http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.2) to listen on `/run/haproxy/info.sock`
   - or set custom socket path in checks (set `{$HAPROXY_SOCK}` macro to your custom socket path)
   - or update `userparameter_haproxy.conf` and `haproxy_discovery.sh` with your socket path
-
-    # haproxy.conf snippet
-    # haproxy read-only non-admin socket
-    ## (user level permissions are required, admin level will work as well, though not necessary)
-    global
-      stats socket /run/haproxy/info.sock  mode 666 level user
-
-5. Verify on server with HAProxy installed:
-
-    anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[FRONTEND]
-      haproxy.list.discovery[FRONTEND]              [t|{"data":[{"{#FRONTEND_NAME}":"http-frontend"},{"{#FRONTEND_NAME}":"https-frontend"}]}]
+```
+# haproxy.conf snippet
+# haproxy read-only non-admin socket
+## (user level permissions are required, admin level will work as well, though not necessary)
+global
+  stats socket /run/haproxy/info.sock  mode 666 level user
+```
+* Verify on server with HAProxy installed:
+```
+anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[FRONTEND]
+  haproxy.list.discovery[FRONTEND]              [t|{"data":[{"{#FRONTEND_NAME}":"http-frontend"},{"{#FRONTEND_NAME}":"https-frontend"}]}]
     
-    anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[BACKEND]
-      haproxy.list.discovery[BACKEND]               [t|{"data":[{"{#BACKEND_NAME}":"www-backend"},{"{#BACKEND_NAME}":"api-backend"}]}]
+anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[BACKEND]
+  haproxy.list.discovery[BACKEND]               [t|{"data":[{"{#BACKEND_NAME}":"www-backend"},{"{#BACKEND_NAME}":"api-backend"}]}]
     
-    anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[SERVERS]
-      haproxy.list.discovery[SERVERS]               [t|{"data":[{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www01"},{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www02"},{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www03"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api01"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api02"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api03"}]}]
+anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[SERVERS]
+  haproxy.list.discovery[SERVERS]               [t|{"data":[{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www01"},{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www02"},{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www03"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api01"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api02"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api03"}]}]
+```
 
-6. Add hosts with HAProxy installed to just imported Zabbix HAProxy template.
-7. Wait for discovery.. Frontend(s), Backend(s) and Server(s) should show up under Host Items.  
+* Add hosts with HAProxy installed to just imported Zabbix HAProxy template.
+* Wait for discovery.. Frontend(s), Backend(s) and Server(s) should show up under Host Items.  
    An easy way to see all data is via _Overview_ (make sure to pick right Group, one of the "HAProxy" applications and select _Data_ as Type)
 
 
