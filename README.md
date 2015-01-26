@@ -5,7 +5,7 @@ HAProxy Zabbix Discovery and Template
 Zabbix's powerful Discovery capability is awesome, making it possible to automatically register hosts as they come online or monitor database servers without having to add individual databases and tables one by one.
 This repo contains everything you need to discover and monitor HAProxy frontends, backends and backend servers.
 
-[HAProxy](http://www.haproxy.org/)
+[HAProxy](http://www.haproxy.org/) is an awesome multi-purpose load-balancer.
 
 > HAProxy is a free, very fast and reliable solution offering high availability, load balancing, and proxying for TCP and HTTP-based applications.
 > It is particularly suited for very high traffic web sites and powers quite a number of the world's most visited ones. Over the years it has become the de-facto standard opensource load balancer, is now shipped with most mainstream Linux distributions, and is often deployed by default in cloud platforms.
