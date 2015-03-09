@@ -13,7 +13,7 @@ This repo contains everything you need to discover and monitor HAProxy frontends
 
 ### Prerequisites
 
-* Zabbix Server >= 2.x
+* Zabbix Server >= 2.x (tested on 2.2 and 2.4)
 * Zabbix Frontend >= 2.x
 * HAProxy >= 1.3
 * Socat
@@ -36,6 +36,7 @@ Include=/etc/zabbix/zabbix_agentd.d/
   - [Configure HAProxy](http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.2) to listen on `/run/haproxy/info.sock`
   - or set custom socket path in checks (set `{$HAPROXY_SOCK}` template macro to your custom socket path)
   - or update `userparameter_haproxy.conf` and `haproxy_discovery.sh` with your socket path
+* Customize your HAProxy config file location via `{$HAPROXY_CONFIG}` template macro, if necessary
 ```
 # haproxy.conf snippet
 # haproxy read-only non-admin socket

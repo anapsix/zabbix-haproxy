@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>2.0</version>
-    <date>2015-01-26T17:15:34Z</date>
+    <date>2015-03-09T19:53:08Z</date>
+    <groups>
+        <group>
+            <name>Templates</name>
+        </group>
+    </groups>
     <templates>
         <template>
             <template>HAProxy</template>
             <name>HAProxy</name>
+            <description/>
+            <groups>
+                <group>
+                    <name>Templates</name>
+                </group>
+            </groups>
             <applications>
                 <application>
                     <name>HAProxy</name>
@@ -27,7 +38,7 @@
                     <snmp_community/>
                     <multiplier>0</multiplier>
                     <snmp_oid/>
-                    <key>vfs.file.cksum[/etc/haproxy/haproxy.cfg]</key>
+                    <key>vfs.file.cksum[{$HAPROXY_CONFIG}]</key>
                     <delay>600</delay>
                     <history>90</history>
                     <trends>365</trends>
@@ -62,6 +73,7 @@
                         </application>
                     </applications>
                     <valuemap/>
+                    <logtimefmt/>
                 </item>
                 <item>
                     <name>HAProxy memory used</name>
@@ -104,6 +116,7 @@
                         </application>
                     </applications>
                     <valuemap/>
+                    <logtimefmt/>
                 </item>
                 <item>
                     <name>HAProxy number of running processes</name>
@@ -146,6 +159,7 @@
                         </application>
                     </applications>
                     <valuemap/>
+                    <logtimefmt/>
                 </item>
             </items>
             <discovery_rules>
@@ -174,7 +188,11 @@
                     <publickey/>
                     <privatekey/>
                     <port/>
-                    <filter>:</filter>
+                    <filter>
+                        <evaltype>0</evaltype>
+                        <formula/>
+                        <conditions/>
+                    </filter>
                     <lifetime>5</lifetime>
                     <description/>
                     <item_prototypes>
@@ -222,6 +240,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#BACKEND_NAME}] bytes out</name>
@@ -267,6 +286,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#BACKEND_NAME}] session rate</name>
@@ -312,6 +332,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#BACKEND_NAME}] status</name>
@@ -357,6 +378,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                     </item_prototypes>
                     <trigger_prototypes/>
@@ -465,7 +487,11 @@
                     <publickey/>
                     <privatekey/>
                     <port/>
-                    <filter>:</filter>
+                    <filter>
+                        <evaltype>0</evaltype>
+                        <formula/>
+                        <conditions/>
+                    </filter>
                     <lifetime>5</lifetime>
                     <description/>
                     <item_prototypes>
@@ -513,6 +539,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#FRONTEND_NAME}] bytes out</name>
@@ -558,6 +585,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#FRONTEND_NAME}] session rate</name>
@@ -603,6 +631,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#FRONTEND_NAME}] status</name>
@@ -648,6 +677,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                     </item_prototypes>
                     <trigger_prototypes/>
@@ -756,7 +786,11 @@
                     <publickey/>
                     <privatekey/>
                     <port/>
-                    <filter>:</filter>
+                    <filter>
+                        <evaltype>0</evaltype>
+                        <formula/>
+                        <conditions/>
+                    </filter>
                     <lifetime>30</lifetime>
                     <description/>
                     <item_prototypes>
@@ -804,6 +838,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#BACKEND_NAME}/{#SERVER_NAME}] backend server bytes out</name>
@@ -849,6 +884,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#BACKEND_NAME}/{#SERVER_NAME}] backend server session rate</name>
@@ -894,6 +930,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                         <item_prototype>
                             <name>[{#BACKEND_NAME}/{#SERVER_NAME}] backend server status</name>
@@ -939,6 +976,7 @@
                                 </application>
                             </applications>
                             <valuemap/>
+                            <logtimefmt/>
                         </item_prototype>
                     </item_prototypes>
                     <trigger_prototypes/>
@@ -1025,6 +1063,10 @@
             </discovery_rules>
             <macros>
                 <macro>
+                    <macro>{$HAPROXY_CONFIG}</macro>
+                    <value>/etc/haproxy/haproxy.cfg</value>
+                </macro>
+                <macro>
                     <macro>{$HAPROXY_SOCK}</macro>
                     <value>/var/run/haproxy/info.sock</value>
                 </macro>
@@ -1035,7 +1077,7 @@
     </templates>
     <triggers>
         <trigger>
-            <expression>{HAProxy:vfs.file.cksum[/etc/haproxy/haproxy.cfg].diff(0)}&gt;0</expression>
+            <expression>{HAProxy:vfs.file.cksum[{$HAPROXY_CONFIG}].diff(0)}&gt;0</expression>
             <name>HAProxy config file changed on {HOST.NAME}</name>
             <url/>
             <status>0</status>
