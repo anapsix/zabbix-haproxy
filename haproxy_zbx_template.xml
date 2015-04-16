@@ -188,11 +188,11 @@
                     <publickey/>
                     <privatekey/>
                     <port/>
-                    <filter>
+<!--                     <filter>
                         <evaltype>0</evaltype>
                         <formula/>
                         <conditions/>
-                    </filter>
+                    </filter> -->
                     <lifetime>5</lifetime>
                     <description/>
                     <item_prototypes>
@@ -487,11 +487,11 @@
                     <publickey/>
                     <privatekey/>
                     <port/>
-                    <filter>
+<!--                     <filter>
                         <evaltype>0</evaltype>
                         <formula/>
                         <conditions/>
-                    </filter>
+                    </filter> -->
                     <lifetime>5</lifetime>
                     <description/>
                     <item_prototypes>
@@ -786,11 +786,11 @@
                     <publickey/>
                     <privatekey/>
                     <port/>
-                    <filter>
+<!--                     <filter>
                         <evaltype>0</evaltype>
                         <formula/>
                         <conditions/>
-                    </filter>
+                    </filter> -->
                     <lifetime>30</lifetime>
                     <description/>
                     <item_prototypes>
