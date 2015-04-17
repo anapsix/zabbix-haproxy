@@ -69,9 +69,38 @@ anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[SERVERS]
    An easy way to see all data is via _Overview_ (make sure to pick right Group, one of the "HAProxy" applications and select _Data_ as Type)
 
 
-### Contributors
+### Troubleshooting
 
-Anastas Dancha <anapsix@random.io>
+#### Discover
+```
+/usr/local/bin/haproxy_discovery.sh $1 $2
+$1 is a path to haproxy socket
+$2 is FRONTEND or BACKEND or SERVERS
+
+# /usr/local/bin/haproxy_discovery.sh /var/run/haproxy/info.sock FRONTEND    # second argument is optional
+# /usr/local/bin/haproxy_discovery.sh /var/run/haproxy/info.sock BACKEND     # second argument is optional
+# /usr/local/bin/haproxy_discovery.sh /var/run/haproxy/info.sock SERVERS     # second argument is optional
+```
+
+#### Stats
+```
+## Bytes In:      echo "show stat" | socat $1 stdio | grep "^$2,$3" | cut -d, -f9
+## Bytes Out:     echo "show stat" | socat $1 stdio | grep "^$2,$3" | cut -d, -f10
+## Session Rate:  echo "show stat" | socat $1 stdio | grep "^$2,$3" | cut -d, -f5
+### $1 is a path to haproxy socket
+### $2 is a name of the backend, as set in haproxy.cnf
+### $3 is a name of the server, as set in haproxy.cnf
+# echo "show stat" | socat /var/run/haproxy/info.sock stdio | grep "^www-backend,www01" | cut -d, -f9
+# echo "show stat" | socat /var/run/haproxy/info.sock stdio | grep "^www-backend,BACKEND" | cut -d, -f10
+# echo "show stat" | socat /var/run/haproxy/info.sock stdio | grep "^https-frontend,FRONTEND" | cut -d, -f5
+# echo "show stat" | socat /var/run/haproxy/info.sock stdio | grep "^api-backend,api02" | cut -d, -f18 | cut -d\  -f1
+```
+
+#### More
+Take a look at the out put of the following to learn more about what is available though HAProxy socket
+```
+echo "show stat" | socat /var/run/haproxy/info.sock stdio
+```
 
 ### License
 
