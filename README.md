@@ -43,7 +43,15 @@ Include=/etc/zabbix/zabbix_agentd.d/
 ## (user level permissions are required, admin level will work as well, though not necessary)
 global
   stats socket /run/haproxy/info.sock  mode 666 level user
+
 ```
+
+>**MAKE SURE TO HAVE APPROPRIATE PERMISSIONS ON HAPROXY SOCKET**  
+You can specify with what permissions a stats socker file will be created in `haproxy.cnf`. When using non-admin socket for stats, it's _mostly_ safe to allow very loose permissions (0666). You can even use something more restrictive like 0660, as long as you add Zabbix Agent's running user (usually "zabbix") to the HAProxy group (usually "haproxy").
+This way you don't have to prepend `socat` with `sudo` in `userparameter_haproxy.conf` to make sure Zabbix Agent can access the socket. And you don't have to create `/etc/sudoers/` entry for Zabbix. And don't need to remember to make it restrictive, avoiding all implication of misconfiguring use of SUDO.
+The symptom of permissions problem on the socket is the following error from Zabbix Agent:  
+`Received value [] is not suitable for value type [Numeric (unsigned)] and data type [Decimal]`
+
 * Verify on server with HAProxy installed:
 ```
 anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[FRONTEND]
