@@ -11,7 +11,7 @@
 #  global
 #  stats socket /run/haproxy/info.sock  mode 666 level user
 
-HAPROXY_SOCK=$(echo $1 | grep -Po "^/[^\s]+" || echo "/var/run/haproxy/info.sock")
+HAPROXY_SOCK=$(echo $1 | tr -d '\040\011\012\015' || echo "/var/run/haproxy/info.sock")
 
 get_stats() {
 	echo "show stat" | socat ${HAPROXY_SOCK} stdio 2>/dev/null | grep -v "^#"
@@ -23,7 +23,7 @@ case $1 in
 	F*) END="FRONTEND" ;;
 	S*)
 		for backend in $(get_stats | grep BACKEND | cut -d, -f1 | uniq); do
-			for server in $(get_stats | grep -P "^${backend}"',(?!BA)' | cut -d, -f2); do
+			for server in $(get_stats | grep "${backend}" | grep -v BACKEND | cut -d, -f2); do
 				serverlist="$serverlist,"'{"{#BACKEND_NAME}":"'$backend'","{#SERVER_NAME}":"'$server'"}'
 			done
 		done
