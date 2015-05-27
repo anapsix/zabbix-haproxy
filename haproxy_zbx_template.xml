@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>2.0</version>
-    <date>2015-03-09T19:53:08Z</date>
+    <date>2015-05-27T10:32:05Z</date>
     <groups>
         <group>
             <name>Templates</name>
@@ -168,7 +168,7 @@
                     <type>0</type>
                     <snmp_community/>
                     <snmp_oid/>
-                    <key>haproxy.list.discovery[BACK]</key>
+                    <key>haproxy.list.discovery[{$HAPROXY_SOCK},BACK]</key>
                     <delay>3600</delay>
                     <status>0</status>
                     <allowed_hosts/>
@@ -467,7 +467,7 @@
                     <type>0</type>
                     <snmp_community/>
                     <snmp_oid/>
-                    <key>haproxy.list.discovery[FRONT]</key>
+                    <key>haproxy.list.discovery[{$HAPROXY_SOCK},FRONT]</key>
                     <delay>3600</delay>
                     <status>0</status>
                     <allowed_hosts/>
@@ -766,7 +766,7 @@
                     <type>0</type>
                     <snmp_community/>
                     <snmp_oid/>
-                    <key>haproxy.list.discovery[SERVER]</key>
+                    <key>haproxy.list.discovery[{$HAPROXY_SOCK},SERVER]</key>
                     <delay>3600</delay>
                     <status>0</status>
                     <allowed_hosts/>
@@ -982,7 +982,7 @@
                     <trigger_prototypes/>
                     <graph_prototypes>
                         <graph_prototype>
-                            <name>[{#SERVER_NAME}] backend server session rate</name>
+                            <name>[{#BACKEND_NAME}/{#SERVER_NAME}] backend server session rate</name>
                             <width>900</width>
                             <height>200</height>
                             <yaxismin>0.0000</yaxismin>
@@ -1014,7 +1014,7 @@
                             </graph_items>
                         </graph_prototype>
                         <graph_prototype>
-                            <name>[{#SERVER_NAME}] backend server traffic</name>
+                            <name>[{#BACKEND_NAME}/{#SERVER_NAME}] backend server traffic</name>
                             <width>900</width>
                             <height>200</height>
                             <yaxismin>0.0000</yaxismin>
