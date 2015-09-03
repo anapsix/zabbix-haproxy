@@ -30,14 +30,14 @@ get_stats() {
 get() {
   # $1: pattern
   # $2: field
-  # $3: return this if empty string, default to 0
+  # $3: return $3 if $_res is empty string, default to 0
   local _res
   _res="$(grep "$1" $CACHE_FILEPATH | cut -d, -f$2)"
-  if [ -z "${_res}" ]
+  if [ -n "$3" ] || [[ "$3" == "@" ]]
   then
-    echo "${3:-0}"
-  else
     echo "${_res}"
+  else
+    echo "${3:-0}"  
   fi
 }
 
@@ -45,14 +45,20 @@ ctime() {
   get "^https-frontend,FRONTEND" 2
 }
 rtime() {
-  get "^https-frontend,FRONTEND" 61 || echo 0
+  get "^https-frontend,FRONTEND" 61
 }
 
 bin() {
-  get "^https-frontend,FRONTEND" 9 "9999999999"
+  get "^https-frontend,FRONTEND" 9 9999999999
+}
+
+status() {
+  local _end="$1"
+  local _item="$2"
+  get "^${_end},${_item}" 18 @ | cut -d\  -f1
 }
 
 if type $1 >/dev/null 2>&1
 then
-  get_stats && $1
+  get_stats && $1 $2 $3 $4
 fi
