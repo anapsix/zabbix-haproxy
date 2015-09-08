@@ -10,6 +10,9 @@ This repo contains everything you need to discover and monitor HAProxy frontends
 > HAProxy is a free, very fast and reliable solution offering high availability, load balancing, and proxying for TCP and HTTP-based applications.
 > It is particularly suited for very high traffic web sites and powers quite a number of the world's most visited ones. Over the years it has become the de-facto standard opensource load balancer, is now shipped with most mainstream Linux distributions, and is often deployed by default in cloud platforms.
 
+### Latest / Changelog
+
+* [09/08/2015]: now all stats are retrieved via `haproxy_stats.sh` script, which caches the stats for 5 minutes (by default) to avoid hitting HAProxy stats socket too much.
 
 ### Prerequisites
 
