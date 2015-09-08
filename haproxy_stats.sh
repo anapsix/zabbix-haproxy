@@ -13,8 +13,59 @@ stat="$3"
 
 DEBUG=${DEBUG:-0}
 HAPROXY_SOCKET="${HAPROXY_SOCKET:-/var/run/haproxy/info.sock}"
-CACHE_FILEPATH="/var/tmp/haproxy_stats.cache"
-CACHE_EXPIRATION="5" # in minutes
+CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-/var/tmp/haproxy_stats.cache}"
+CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-5}" # in minutes
+CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-/var/tmp/haproxy_info.cache}" ## unused
+CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
+GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
+SOCAT_BIN="$(which socat)"
+
+debug() {
+  [ "${DEBUG}" -eq 1 ] && echo "DEBUG: $@" >&2 || true
+}
+
+debug "SOCAT_BIN        => $SOCAT_BIN"
+debug "CACHE_FILEPATH   => $CACHE_FILEPATH"
+debug "CACHE_EXPIRATION => $CACHE_EXPIRATION minutes"
+debug "HAPROXY_SOCKET   => $HAPROXY_SOCKET"
+debug "pxname   => $pxname"
+debug "svname   => $svname"
+debug "stat     => $stat"
+
+# check if socat is available in path
+if [ -z "$SOCAT_BIN" ] && [ "$GET_STATS" -eq 1 ]
+then
+  echo 'ERROR: cannot find socat binary'
+  exit 126
+fi
+
+# if we are getting stats:
+#   check if we can write to stats cache file, if it exists
+#     or cache file path, if it does not exist
+#   check if HAPROXY socket is writable
+# if we are NOT getting stats:
+#   check if we can read the stats cache file
+if [ "$GET_STATS" -eq 1 ]
+then
+  if [ -e "$CACHE_FILEPATH" ] && [ ! -w "$CACHE_FILEPATH" ]
+  then
+    echo 'ERROR: stats cache file exists, but is not writable'
+    exit 126
+  elif [ ! -w ${CACHE_FILEPATH%/*} ]
+  then
+    echo 'ERROR: stats cache file path is not writable'
+    exit 126
+  fi
+  if [ ! -w $HAPROXY_SOCKET ]
+  then
+    echo "ERROR: haproxy socker is not writable"
+    exit 126
+  fi
+elif [ ! -r "$CACHE_FILEPATH" ]
+then
+  echo 'ERROR: cannot read stats cache file'
+  exit 126
+fi
 
 # index:name:default
 MAP="
@@ -35,7 +86,7 @@ MAP="
 15:eresp:9999999999
 16:wretr:9999999999
 17:wredis:9999999999
-18:status:@
+18:status:UNK
 19:weight:9999999999
 20:act:9999999999
 21:bck:9999999999
@@ -86,48 +137,74 @@ _STAT=$(echo -e "$MAP" | grep :${stat}:)
 _INDEX=${_STAT%%:*}
 _DEFAULT=${_STAT##*:}
 
-debug() {
-  [ "${DEBUG}" -eq 1 ] && echo "$@" >&2 || true
-}
-
-debug "pxname => $pxname"
-debug "svname => $svname"
-debug "stat => $stat"
-debug "_STAT => $_STAT"
-debug "_INDEX => $_INDEX"
+debug "_STAT    => $_STAT"
+debug "_INDEX   => $_INDEX"
 debug "_DEFAULT => $_DEFAULT"
 
+# check if requested stat is supported
+if [ -z "${_STAT}" ]
+then
+  echo "ERROR: $stat is unsupported"
+  exit 127
+fi
+
+# generate stats cache file
 get_stats() {
-  find $CACHE_FILEPATH -mmin +${CACHE_EXPIRATION} -delete >/dev/null 2>&1
-  if [ ! -e $CACHE_FILEPATH ]
+  find $CACHE_STATS_FILEPATH -mmin +${CACHE_STATS_EXPIRATION} -delete >/dev/null 2>&1
+  if [ ! -e $CACHE_STATS_FILEPATH ]
   then
     debug "no cache file found, querying haproxy"
-    echo "show stat" | socat ${HAPROXY_SOCKET} stdio > ${CACHE_FILEPATH:-/tmp/.haproxycache}
+    echo "show stat" | $SOCAT_BIN ${HAPROXY_SOCKET} stdio > ${CACHE_STATS_FILEPATH}
   else
-    debug "cache file found, results are at most ${CACHE_EXPIRATION} minutes stale.."
+    debug "cache file found, results are at most ${CACHE_STATS_EXPIRATION} minutes stale.."
   fi
 }
 
+# generate info cache file
+## unused at the moment
+get_info() {
+  find $CACHE_INFO_FILEPATH -mmin +${CACHE_INFO_EXPIRATION} -delete >/dev/null 2>&1
+  if [ ! -e $CACHE_INFO_FILEPATH ]
+  then
+    debug "no cache file found, querying haproxy"
+    echo "show info" | $SOCAT_BIN ${HAPROXY_SOCKET} stdio > ${CACHE_INFO_FILEPATH}  
+  else
+    debug "cache file found, results are at most ${CACHE_INFO_EXPIRATION} minutes stale.."
+  fi
+}
+
+# get requested stat from cache file using INDEX offset defined in MAP
+# return default value if stat is ""
 get() {
   # $1: pxname/svname
-  local _res="$(grep $1 $CACHE_FILEPATH | cut -d, -f ${_INDEX})"
-  if [ -n "${_DEFAULT}" ] || [[ "${_DEFAULT}" == "@" ]]
+  local _res="$(grep $1 $CACHE_STATS_FILEPATH)"
+  if [ -z "${_res}" ]
   then
-    echo "${_res}"
-  else
+    echo "ERROR: bad $pxname/$svname"
+    exit 127
+  fi
+  _res="$(echo $_res | cut -d, -f ${_INDEX})"
+  if [ -z "${_res}" ] && [[ "${_DEFAULT}" != "@" ]]
+  then
     echo "${_DEFAULT}"  
+  else
+    echo "${_res}"
   fi
 }
 
-status() {
-  get "^${pxname},${svnamem}" $stat | cut -d\  -f1
-}
+# not sure why we'd need to split on backslash
+# left commented out as an example to override default get() method
+# status() {
+#   get "^${pxname},${svnamem}," $stat | cut -d\  -f1
+# }
 
-if type ${stat} >/dev/null 2>&1
+# this allows for overriding default method of getting stats
+# name a function by stat name for additional processing, custom returns, etc.
+if type get_${stat} >/dev/null 2>&1
 then
   debug "found custom query function"
-  get_stats && $stat
+  get_stats && get_${stat}
 else
   debug "using default get() method"
-  get_stats && get "^${pxname},${svname}" $stat
+  get_stats && get "^${pxname},${svname}," $stat
 fi
