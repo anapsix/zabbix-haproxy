@@ -47,7 +47,7 @@ global
 ```
 
 >**MAKE SURE TO HAVE APPROPRIATE PERMISSIONS ON HAPROXY SOCKET**  
->You can specify what permissions a stats socker file will be created with in `haproxy.cnf`. When using non-admin socket for stats, it's _mostly_ safe to allow very loose permissions (0666).  
+>You can specify what permissions a stats socker file will be created with in `haproxy.cfg`. When using non-admin socket for stats, it's _mostly_ safe to allow very loose permissions (0666).  
 >You can even use something more restrictive like 0660, as long as you add Zabbix Agent's running user (usually "zabbix") to the HAProxy group (usually "haproxy").  
 >This way you don't have to prepend `socat` with `sudo` in `userparameter_haproxy.conf` to make sure Zabbix Agent can access the socket. And you don't have to create `/etc/sudoers` entry for Zabbix. And don't need to remember to make it restrictive, avoiding all implication of misconfiguring use of SUDO.  
 >The symptom of permissions problem on the socket is the following error from Zabbix Agent:  
@@ -83,14 +83,30 @@ $2 is FRONTEND or BACKEND or SERVERS
 # /usr/local/bin/haproxy_discovery.sh /var/run/haproxy/info.sock SERVERS     # second argument is optional
 ```
 
+#### haproxy_stats.sh script
+```
+## Usage: haproxy_stats.sh $1 $2 $3 $4
+### $1 is a path to haproxy socket - optional, defaults to haproxy_stats.sh
+### $2 is a name of the backend, as set in haproxy.cfg
+### $3 is a name of the server, as set in haproxy.cfg
+### $4 is a stat as references by HAProxy terminology
+# haproxy_stats.sh /var/run/haproxy/info.sock www-backend www01 status
+# haproxy_stats.sh www-backend BACKEND status
+# haproxy_stats.sh https-frontend FRONTEND status
+```
+ 
+> For the list of stats HAProxy supports as of version 1.5  
+> see TEXT: http://www.haproxy.org/download/1.5/doc/configuration.txt
+> see HTML: http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1
+
 #### Stats
 ```
 ## Bytes In:      echo "show stat" | socat $1 stdio | grep "^$2,$3" | cut -d, -f9
 ## Bytes Out:     echo "show stat" | socat $1 stdio | grep "^$2,$3" | cut -d, -f10
 ## Session Rate:  echo "show stat" | socat $1 stdio | grep "^$2,$3" | cut -d, -f5
 ### $1 is a path to haproxy socket
-### $2 is a name of the backend, as set in haproxy.cnf
-### $3 is a name of the server, as set in haproxy.cnf
+### $2 is a name of the backend, as set in haproxy.cfg
+### $3 is a name of the server, as set in haproxy.cfg
 # echo "show stat" | socat /var/run/haproxy/info.sock stdio | grep "^www-backend,www01" | cut -d, -f9
 # echo "show stat" | socat /var/run/haproxy/info.sock stdio | grep "^www-backend,BACKEND" | cut -d, -f10
 # echo "show stat" | socat /var/run/haproxy/info.sock stdio | grep "^https-frontend,FRONTEND" | cut -d, -f5
