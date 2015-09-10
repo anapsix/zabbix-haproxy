@@ -1,24 +1,25 @@
 #!/bin/bash
 set -o pipefail
 
-if [[ "$1" = /* ]]
-then
-  HAPROXY_SOCKET="$1"
-  shift 1
-fi
+CONFIG_FILE="${CONFIG_FILE:-/etc/zabbix/zabbix-haproxy.conf}"        # main config file
+CONFIG_FILE_ALT="$(dirname $(readlink -f "$0"))/zabbix-haproxy.conf" # alternative config, mostly for development
+[ -r "$CONFIG_FILE" ] && source $CONFIG_FILE
+[ -r "$CONFIG_FILE_ALT" ] && source $CONFIG_FILE_ALT
 
-pxname="$1"
-svname="$2"
-stat="$3"
-
-DEBUG=${DEBUG:-0}
+# I suppose, $1 can be used directly here, `tr` whitespace cleanup is for paranoid
+[[ "$1" = /* ]] && HAPROXY_SOCKET="$(echo $1 | tr -d '\040\011\012\015')" && shift 1
 HAPROXY_SOCKET="${HAPROXY_SOCKET:-/var/run/haproxy/info.sock}"
+DEBUG=${DEBUG:-0}
 CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-/var/tmp/haproxy_stats.cache}"
 CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-5}" # in minutes
 CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-/var/tmp/haproxy_info.cache}" ## unused
 CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
 GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
-SOCAT_BIN="$(which socat)"
+SOCAT_BIN="${SOCAT_BIN:-$(which socat)}"
+
+pxname="$1"
+svname="$2"
+stat="$3"
 
 debug() {
   [ "${DEBUG}" -eq 1 ] && echo "DEBUG: $@" >&2 || true

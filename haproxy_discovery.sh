@@ -9,13 +9,26 @@
 #
 ## haproxy.cfg snippet
 #  global
-#  stats socket /run/haproxy/info.sock  mode 666 level user
+#  stats socket /var/run/haproxy/info.sock  mode 666 level user
 
-HAPROXY_SOCK="/var/run/haproxy/info.sock"
-[ -n "$1" ] && echo $1 | grep -q ^/ && HAPROXY_SOCK="$(echo $1 | tr -d '\040\011\012\015')"
+CONFIG_FILE="${CONFIG_FILE:-/etc/zabbix/zabbix-haproxy.conf}"        # main config file
+CONFIG_FILE_ALT="$(dirname $(readlink -f "$0"))/zabbix-haproxy.conf" # alternative config, mostly for development
+[ -r "$CONFIG_FILE" ] && source $CONFIG_FILE
+[ -r "$CONFIG_FILE_ALT" ] && source $CONFIG_FILE_ALT
+
+# I suppose, $1 can be used directly here, `tr` whitespace cleanup is for paranoid
+[[ "$1" = /* ]] && HAPROXY_SOCKET="$(echo $1 | tr -d '\040\011\012\015')" && shift 1
+HAPROXY_SOCKET="${HAPROXY_SOCKET:-/var/run/haproxy/info.sock}"
+
+SOCAT_BIN="${SOCAT_BIN:-$(which socat)}"
+if [ -z "$SOCAT_BIN" ]
+then
+  echo "ERROR: socat binary is missing"
+  exit 126
+fi
 
 get_stats() {
-	echo "show stat" | socat ${HAPROXY_SOCK} stdio 2>/dev/null | grep -v "^#"
+	echo "show stat" | $SOCAT_BIN ${HAPROXY_SOCKET} stdio 2>/dev/null | grep -v "^#"
 }
 
 [ -n "$2" ] && shift 1
