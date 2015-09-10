@@ -14,6 +14,10 @@
 HAPROXY_SOCK="/var/run/haproxy/info.sock"
 [ -n "$1" ] && echo $1 | grep -q ^/ && HAPROXY_SOCK="$(echo $1 | tr -d '\040\011\012\015')"
 
+# Define variables and perform checks
+CONFIG_FILE="$(dirname $(readlink -f "$0"))/haproxy_config"
+. $CONFIG_FILE
+
 get_stats() {
 	echo "show stat" | socat ${HAPROXY_SOCK} stdio 2>/dev/null | grep -v "^#"
 }
@@ -25,16 +29,16 @@ case $1 in
 	S*)
 		for backend in $(get_stats | grep BACKEND | cut -d, -f1 | uniq); do
 			for server in $(get_stats | grep "${backend}" | grep -v BACKEND | cut -d, -f2); do
-				serverlist="$serverlist,"'{"{#BACKEND_NAME}":"'$backend'","{#SERVER_NAME}":"'$server'"}'
+				serverlist="$serverlist,\n"'\t\t{\n\t\t\t"{#BACKEND_NAME}":"'$backend'",\n\t\t\t"{#SERVER_NAME}":"'$server'"}'
 			done
 		done
-		echo '{"data":['${serverlist#,}']}'
+		echo -e '{\n\t"data":[\n'${serverlist#,}']}'
 		exit 0
 	;;
 	*) END="FRONTEND" ;;
 esac
 
 for frontend in $(get_stats | grep "$END" | cut -d, -f1 | uniq); do
-    felist="$felist,"'{"{#'${END}'_NAME}":"'$frontend'"}'
+    felist="$felist,\n"'\t\t{\n\t\t\t"{#'${END}'_NAME}":"'$frontend'"}'
 done
-echo '{"data":['${felist#,}']}'
+echo -e '{\n\t"data":[\n'${felist#,}']}'
