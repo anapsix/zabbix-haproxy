@@ -4,7 +4,7 @@
 # = Settings =
 
 # Main settings
-HAPROXY_SOCKET="${HAPROXY_SOCKET:-/var/run/haproxy/info.sock}"
+HAPROXY_SOCK="${HAPROXY_SOCK:-/var/run/haproxy/info.sock}"
 
 # Debug options
 DEBUG=${DEBUG:-0}
@@ -24,11 +24,11 @@ CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
 # = Checks =
 
 # HA Proxy socket
-[ -S $HAPROXY_SOCKET ] || {
-	echo "[ERR] haproxy socket \"$HAPROXY_SOCKET\" is not exists" ;
+[ -S $HAPROXY_SOCK ] || {
+	echo "[ERR] haproxy socket \"$HAPROXY_SOCK\" is not exists" ;
 	exit 1 ; }
-[ ! -w $HAPROXY_SOCKET ] || {
-	echo "[ERR] haproxy socket \"$HAPROXY_SOCKET\" is not writable" ;
+[ -w $HAPROXY_SOCK ] || {
+	echo "[ERR] haproxy socket \"$HAPROXY_SOCK\" is not writable" ;
 	exit 2 ; }
 
 # Socat
@@ -38,18 +38,8 @@ CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
 
 # Cache related checks
 [ "$GET_STATS" -eq 1 ] && {
-	[ -w ${CACHE_FILEPATH%/*} ] || {
+	[ -w ${CACHE_INFO_FILEPATH%/*} ] || {
 		echo "[ERR] stats cache file path is not writable" ; 
 		exit 4 ; }
-	[ -e "$CACHE_FILEPATH" ] || {
-		echo "[ERR] stats cache file is not exists" ;
-		exit 5 ; }
-	[ -w "$CACHE_FILEPATH" ] || {
-		echo "[ERR] stats cache file is not writable" ;
-		exit 6 ; }
-} || {
-	[ -r "$CACHE_FILEPATH" ] || {
-		echo "[ERR] cannot read stats cache file" ;
-		exit 7 ; }
 }
 
