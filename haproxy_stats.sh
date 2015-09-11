@@ -1,24 +1,15 @@
 #!/bin/bash
 set -o pipefail
 
-if [[ "$1" = /* ]]
-then
-  HAPROXY_SOCKET="$1"
-  shift 1
-fi
+[ "$#" -gt 3 ] && HAPROXY_SOCK="$(echo $1 | tr -d '\040\011\012\015')" && shift 1
+
+# Define variables and perform checks
+CONFIG_FILE="$(dirname $(readlink -f "$0"))/haproxy_config"
+. $CONFIG_FILE
 
 pxname="$1"
 svname="$2"
 stat="$3"
-
-DEBUG=${DEBUG:-0}
-HAPROXY_SOCKET="${HAPROXY_SOCKET:-/var/run/haproxy/info.sock}"
-CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-/var/tmp/haproxy_stats.cache}"
-CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-5}" # in minutes
-CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-/var/tmp/haproxy_info.cache}" ## unused
-CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
-GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
-SOCAT_BIN="$(which socat)"
 
 debug() {
   [ "${DEBUG}" -eq 1 ] && echo "DEBUG: $@" >&2 || true
@@ -27,45 +18,10 @@ debug() {
 debug "SOCAT_BIN        => $SOCAT_BIN"
 debug "CACHE_FILEPATH   => $CACHE_FILEPATH"
 debug "CACHE_EXPIRATION => $CACHE_EXPIRATION minutes"
-debug "HAPROXY_SOCKET   => $HAPROXY_SOCKET"
+debug "HAPROXY_SOCK   => $HAPROXY_SOCK"
 debug "pxname   => $pxname"
 debug "svname   => $svname"
 debug "stat     => $stat"
-
-# check if socat is available in path
-if [ -z "$SOCAT_BIN" ] && [ "$GET_STATS" -eq 1 ]
-then
-  echo 'ERROR: cannot find socat binary'
-  exit 126
-fi
-
-# if we are getting stats:
-#   check if we can write to stats cache file, if it exists
-#     or cache file path, if it does not exist
-#   check if HAPROXY socket is writable
-# if we are NOT getting stats:
-#   check if we can read the stats cache file
-if [ "$GET_STATS" -eq 1 ]
-then
-  if [ -e "$CACHE_FILEPATH" ] && [ ! -w "$CACHE_FILEPATH" ]
-  then
-    echo 'ERROR: stats cache file exists, but is not writable'
-    exit 126
-  elif [ ! -w ${CACHE_FILEPATH%/*} ]
-  then
-    echo 'ERROR: stats cache file path is not writable'
-    exit 126
-  fi
-  if [ ! -w $HAPROXY_SOCKET ]
-  then
-    echo "ERROR: haproxy socker is not writable"
-    exit 126
-  fi
-elif [ ! -r "$CACHE_FILEPATH" ]
-then
-  echo 'ERROR: cannot read stats cache file'
-  exit 126
-fi
 
 # index:name:default
 MAP="
@@ -144,7 +100,7 @@ debug "_DEFAULT => $_DEFAULT"
 # check if requested stat is supported
 if [ -z "${_STAT}" ]
 then
-  echo "ERROR: $stat is unsupported"
+  echo "[ERR] $stat is unsupported"
   exit 127
 fi
 
@@ -154,7 +110,7 @@ get_stats() {
   if [ ! -e $CACHE_STATS_FILEPATH ]
   then
     debug "no cache file found, querying haproxy"
-    echo "show stat" | $SOCAT_BIN ${HAPROXY_SOCKET} stdio > ${CACHE_STATS_FILEPATH}
+    echo "show stat" | $SOCAT_BIN ${HAPROXY_SOCK} stdio > ${CACHE_STATS_FILEPATH}
   else
     debug "cache file found, results are at most ${CACHE_STATS_EXPIRATION} minutes stale.."
   fi
@@ -167,7 +123,7 @@ get_info() {
   if [ ! -e $CACHE_INFO_FILEPATH ]
   then
     debug "no cache file found, querying haproxy"
-    echo "show info" | $SOCAT_BIN ${HAPROXY_SOCKET} stdio > ${CACHE_INFO_FILEPATH}  
+    echo "show info" | $SOCAT_BIN ${HAPROXY_SOCK} stdio > ${CACHE_INFO_FILEPATH}  
   else
     debug "cache file found, results are at most ${CACHE_INFO_EXPIRATION} minutes stale.."
   fi
@@ -180,7 +136,7 @@ get() {
   local _res="$(grep $1 $CACHE_STATS_FILEPATH)"
   if [ -z "${_res}" ]
   then
-    echo "ERROR: bad $pxname/$svname"
+    echo "[ERR] bad $pxname/$svname"
     exit 127
   fi
   _res="$(echo $_res | cut -d, -f ${_INDEX})"

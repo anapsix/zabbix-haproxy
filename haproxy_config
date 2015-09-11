@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# ============
+# = Settings =
+
+# Main settings
+HAPROXY_SOCK="${HAPROXY_SOCK:-/var/run/haproxy/info.sock}"
+
+# Debug options
+DEBUG=${DEBUG:-0}
+
+# Additional checks
+SOCAT_BIN="${SOCAT_BIN:-$(which socat)}"
+
+# Cache options
+GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
+CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-/var/tmp/haproxy_stats.cache}"
+CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-5}" # in minutes
+CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-/var/tmp/haproxy_info.cache}" ## unused
+CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
+
+
+# ==========
+# = Checks =
+
+# HA Proxy socket
+[ -S $HAPROXY_SOCK ] || {
+	echo "[ERR] haproxy socket \"$HAPROXY_SOCK\" is not exists" ;
+	exit 1 ; }
+[ -w $HAPROXY_SOCK ] || {
+	echo "[ERR] haproxy socket \"$HAPROXY_SOCK\" is not writable" ;
+	exit 2 ; }
+
+# Socat
+[ -x $SOCAT_BIN ] || {
+	echo "[ERR] socat is not available";
+	exit 3 ; }
+
+# Cache related checks
+[ "$GET_STATS" -eq 1 ] && {
+	[ -w ${CACHE_INFO_FILEPATH%/*} ] || {
+		echo "[ERR] stats cache file path is not writable" ; 
+		exit 4 ; }
+}
+

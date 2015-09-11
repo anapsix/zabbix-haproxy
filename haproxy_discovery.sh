@@ -14,6 +14,10 @@
 HAPROXY_SOCK="/var/run/haproxy/info.sock"
 [ -n "$1" ] && echo $1 | grep -q ^/ && HAPROXY_SOCK="$(echo $1 | tr -d '\040\011\012\015')"
 
+# Define variables and perform checks
+CONFIG_FILE="$(dirname $(readlink -f "$0"))/haproxy_config"
+. $CONFIG_FILE
+
 get_stats() {
 	echo "show stat" | socat ${HAPROXY_SOCK} stdio 2>/dev/null | grep -v "^#"
 }
