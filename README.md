@@ -89,7 +89,7 @@ $2 is FRONTEND or BACKEND or SERVERS
 #### haproxy_stats.sh script
 ```
 ## Usage: haproxy_stats.sh $1 $2 $3 $4
-### $1 is a path to haproxy socket - optional, defaults to haproxy_stats.sh
+### $1 is a path to haproxy socket - optional, defaults to /var/run/haproxy/info.sock
 ### $2 is a name of the backend, as set in haproxy.cfg
 ### $3 is a name of the server, as set in haproxy.cfg
 ### $4 is a stat as references by HAProxy terminology
