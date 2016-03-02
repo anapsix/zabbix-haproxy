@@ -5,6 +5,13 @@ if [[ "$1" = /* ]]
 then
   HAPROXY_SOCKET="$1"
   shift 1
+else
+  if [[ "$1" =~ (25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):[0-9]{1,5} ]];
+  then
+    HAPROXY_STATS_IP="$1"
+    QUERYING_METHOD="TCP"
+    shift 1
+  fi
 fi
 
 pxname="$1"
@@ -13,18 +20,21 @@ stat="$3"
 
 DEBUG=${DEBUG:-0}
 HAPROXY_SOCKET="${HAPROXY_SOCKET:-/var/run/haproxy/info.sock}"
+QUERYING_METHOD="${QUERYING_METHOD:-SOCKET}"
 CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-/var/tmp/haproxy_stats.cache}"
 CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-5}" # in minutes
 CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-/var/tmp/haproxy_info.cache}" ## unused
 CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
 GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
 SOCAT_BIN="$(which socat)"
+NC_BIN="$(which nc)"
 
 debug() {
   [ "${DEBUG}" -eq 1 ] && echo "DEBUG: $@" >&2 || true
 }
 
 debug "SOCAT_BIN        => $SOCAT_BIN"
+debug "NC_BIN           => $NC_BIN"
 debug "CACHE_FILEPATH   => $CACHE_FILEPATH"
 debug "CACHE_EXPIRATION => $CACHE_EXPIRATION minutes"
 debug "HAPROXY_SOCKET   => $HAPROXY_SOCKET"
@@ -33,7 +43,7 @@ debug "svname   => $svname"
 debug "stat     => $stat"
 
 # check if socat is available in path
-if [ -z "$SOCAT_BIN" ] && [ "$GET_STATS" -eq 1 ]
+if [ "$GET_STATS" -eq 1 ] && [[ $QUERYING_METHOD == "SOCKET" && -z "$SOCAT_BIN" ]] || [[ $QUERYING_METHOD == "TCP" &&  -z "$NC_BIN" ]]
 then
   echo 'ERROR: cannot find socat binary'
   exit 126
@@ -56,9 +66,9 @@ then
     echo 'ERROR: stats cache file path is not writable'
     exit 126
   fi
-  if [ ! -w $HAPROXY_SOCKET ]
+  if [[ $QUERYING_METHOD == "SOCKET" && ! -w $HAPROXY_SOCKET ]]
   then
-    echo "ERROR: haproxy socker is not writable"
+    echo "ERROR: haproxy socket is not writable"
     exit 126
   fi
 elif [ ! -r "$CACHE_FILEPATH" ]
@@ -148,13 +158,24 @@ then
   exit 127
 fi
 
+# method to retrieve data from haproxy stats
+# usage:
+# query_stats "show stat"
+query_stats() {
+    if [[ ${QUERYING_METHOD} == "SOCKET" ]]; then
+        echo $1 | socat ${HAPROXY_SOCKET} stdio 2>/dev/null
+    elif [[ ${QUERYING_METHOD} == "TCP" ]]; then
+        echo $1 | nc ${HAPROXY_STATS_IP//:/ } 2>/dev/null
+    fi
+}
+
 # generate stats cache file
 get_stats() {
-  find $CACHE_STATS_FILEPATH -mmin +${CACHE_STATS_EXPIRATION} -delete >/dev/null 2>&1
-  if [ ! -e $CACHE_STATS_FILEPATH ]
+  find ${CACHE_STATS_FILEPATH} -mmin +${CACHE_STATS_EXPIRATION} -delete >/dev/null 2>&1
+  if [ ! -e ${CACHE_STATS_FILEPATH} ]
   then
     debug "no cache file found, querying haproxy"
-    echo "show stat" | $SOCAT_BIN ${HAPROXY_SOCKET} stdio > ${CACHE_STATS_FILEPATH}
+    query_stats "show stat" > ${CACHE_STATS_FILEPATH}
   else
     debug "cache file found, results are at most ${CACHE_STATS_EXPIRATION} minutes stale.."
   fi
@@ -167,7 +188,7 @@ get_info() {
   if [ ! -e $CACHE_INFO_FILEPATH ]
   then
     debug "no cache file found, querying haproxy"
-    echo "show info" | $SOCAT_BIN ${HAPROXY_SOCKET} stdio > ${CACHE_INFO_FILEPATH}  
+    echo $(query_stats "show info") > ${CACHE_INFO_FILEPATH}
   else
     debug "cache file found, results are at most ${CACHE_INFO_EXPIRATION} minutes stale.."
   fi
@@ -177,7 +198,7 @@ get_info() {
 # return default value if stat is ""
 get() {
   # $1: pxname/svname
-  local _res="$(grep $1 $CACHE_STATS_FILEPATH)"
+  local _res="$(grep $1 ${CACHE_STATS_FILEPATH})"
   if [ -z "${_res}" ]
   then
     echo "ERROR: bad $pxname/$svname"
@@ -206,5 +227,5 @@ then
   get_stats && get_${stat}
 else
   debug "using default get() method"
-  get_stats && get "^${pxname},${svname}," $stat
+  get_stats && get "^${pxname},${svname}," ${stat}
 fi
