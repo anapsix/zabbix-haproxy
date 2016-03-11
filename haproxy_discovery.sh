@@ -14,8 +14,24 @@
 HAPROXY_SOCK="/var/run/haproxy/info.sock"
 [ -n "$1" ] && echo $1 | grep -q ^/ && HAPROXY_SOCK="$(echo $1 | tr -d '\040\011\012\015')"
 
+if [[ "$1" =~ (25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):[0-9]{1,5} ]];
+then
+    HAPROXY_STATS_IP="$1"
+    QUERYING_METHOD="TCP"
+fi
+
+QUERYING_METHOD="${QUERYING_METHOD:-SOCKET}"
+
+query_stats() {
+    if [[ ${QUERYING_METHOD} == "SOCKET" ]]; then
+        echo "show stat" | socat ${HAPROXY_SOCK} stdio 2>/dev/null
+    elif [[ ${QUERYING_METHOD} == "TCP" ]]; then
+        echo "show stat" | nc ${HAPROXY_STATS_IP//:/ } 2>/dev/null
+    fi
+}
+
 get_stats() {
-	echo "show stat" | socat ${HAPROXY_SOCK} stdio 2>/dev/null | grep -v "^#"
+	echo "$(query_stats)" | grep -v "^#"
 }
 
 [ -n "$2" ] && shift 1

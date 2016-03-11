@@ -19,7 +19,7 @@ This repo contains everything you need to discover and monitor HAProxy frontends
 * Zabbix Server >= 2.x (tested on 2.2 and 2.4)
 * Zabbix Frontend >= 2.x
 * HAProxy >= 1.3
-* Socat
+* Socat (when using sockets) or nc (when accessing haproxy status via tcp connection)
 
 ### Instructions
 
@@ -45,7 +45,11 @@ Include=/etc/zabbix/zabbix_agentd.d/
 # haproxy read-only non-admin socket
 ## (user level permissions are required, admin level will work as well, though not necessary)
 global
+  # default usage, through socket
   stats socket /run/haproxy/info.sock  mode 666 level user
+  ## alternative usage, using tcp connection (useful e.g. when haproxy runs inside a docker and zabbix-agent in another)
+  ## replace socket path by ip:port combination on both scripts when using this approach, e.g. 172.17.0.1:9000
+  #stats socket *:9000
 
 ```
 
