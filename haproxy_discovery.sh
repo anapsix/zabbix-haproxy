@@ -40,7 +40,7 @@ case $1 in
 	F*) END="FRONTEND" ;;
 	S*)
 		for backend in $(get_stats | grep BACKEND | cut -d, -f1 | uniq); do
-			for server in $(get_stats | grep "${backend}" | grep -v BACKEND | cut -d, -f2); do
+			for server in $(get_stats | grep "${backend}," | grep -v BACKEND | cut -d, -f2); do
 				serverlist="$serverlist,\n"'\t\t{\n\t\t\t"{#BACKEND_NAME}":"'$backend'",\n\t\t\t"{#SERVER_NAME}":"'$server'"}'
 			done
 		done
