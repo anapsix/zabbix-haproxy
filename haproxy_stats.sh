@@ -175,7 +175,8 @@ get_stats() {
   if [ ! -e ${CACHE_STATS_FILEPATH} ]
   then
     debug "no cache file found, querying haproxy"
-    query_stats "show stat" > ${CACHE_STATS_FILEPATH}
+    query_stats "show stat" > ${CACHE_STATS_FILEPATH}.tmp
+    mv -f ${CACHE_STATS_FILEPATH}.tmp ${CACHE_STATS_FILEPATH}
   else
     debug "cache file found, results are at most ${CACHE_STATS_EXPIRATION} minutes stale.."
   fi
