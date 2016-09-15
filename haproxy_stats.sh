@@ -175,7 +175,7 @@ get_stats() {
   if [ ! -e ${CACHE_STATS_FILEPATH} ]
   then
     debug "no cache file found, querying haproxy"
-    _TMPFILE = ${CACHE_STATS_FILEPATH}.${RANDOM}.tmp
+    _TMPFILE=${CACHE_STATS_FILEPATH}.${RANDOM}.tmp
     query_stats "show stat" > ${_TMPFILE}
     if [ -f $FILE ];
         then
