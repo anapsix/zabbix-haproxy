@@ -29,7 +29,7 @@ GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
 SOCAT_BIN="$(which socat)"
 NC_BIN="$(which nc)"
 FLOCK_BIN="$(which flock)"
-FLOCK_WAIT=300
+FLOCK_WAIT=15 # maximum number of seconds that "flock" waits for acquiring a lock
 FLOCK_SUFFIX='.lock'
 CUR_TIMESTAMP="$(date '+%s')"
 
@@ -39,7 +39,8 @@ debug() {
 
 debug "SOCAT_BIN        => $SOCAT_BIN"
 debug "NC_BIN           => $NC_BIN"
-debug "FLOCK_BIN           => $FLOCK_BIN"
+debug "FLOCK_BIN        => $FLOCK_BIN"
+debug "FLOCK_WAIT       => $FLOCK_WAIT seconds"
 debug "CACHE_FILEPATH   => $CACHE_FILEPATH"
 debug "CACHE_EXPIRATION => $CACHE_EXPIRATION minutes"
 debug "HAPROXY_SOCKET   => $HAPROXY_SOCKET"
@@ -180,16 +181,11 @@ check_cache() {
   local cache_filepath="${2}"
   local cache_expiration="${3}"  
   local cache_filemtime
-  if "${FLOCK_BIN}" --shared --wait "${FLOCK_WAIT}" 200
+  cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
+  if [ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} ]
   then
-    cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
-    if [ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} ]
-    then
-      debug "${cache_type} file found, results are at most ${cache_expiration} minutes stale.."
-      return 0
-    fi
-  fi 200> "${cache_filepath}${FLOCK_SUFFIX}"
-  if "${FLOCK_BIN}" --exclusive --wait "${FLOCK_WAIT}" 200
+    debug "${cache_type} file found, results are at most ${cache_expiration} minutes stale.."
+  elif "${FLOCK_BIN}" --exclusive --wait "${FLOCK_WAIT}" 200
   then
     cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
     if [ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} ]
