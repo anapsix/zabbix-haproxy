@@ -190,7 +190,7 @@ check_cache() {
     cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
     if [ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} ]
     then
-      debug "${cache_type} file found, results have been just updated by another process.."
+      debug "${cache_type} file found, results have just been updated by another process.."
     else
       debug "no ${cache_type} file found, querying haproxy"
       query_stats "show ${cache_type}" > "${cache_filepath}"
