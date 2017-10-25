@@ -18,31 +18,71 @@ pxname="$1"
 svname="$2"
 stat="$3"
 
-DEBUG=${DEBUG:-0}
-HAPROXY_SOCKET="${HAPROXY_SOCKET:-/var/run/haproxy/info.sock}"
+SCRIPT_DIR=`dirname $0`
+CONF_FILE="${SCRIPT_DIR}/haproxy_zbx.conf"
+CONF_MAP="
+ha_sock=/var/run/haproxy.sock
+ha_stats_cache_file=/var/tmp/haproxy_stat.cache
+ha_stats_cache_expire=5
+ha_info_cache_file=/var/tmp/haproxy_info.cache
+ha_info_cache_expire=5
+ha_info_cache_expires=6
+debug=0
+debug_only_log=0
+stats_log_file=/var/tmp/haproxy_stat.log
+"
+get_conf() {
+    local conf_val=`grep $1= ${CONF_FILE} | grep -v "^#" | xargs -d "=" | grep $1 |awk '{print $2}'`
+    if [ $conf_val ]; then
+        echo $conf_val
+    else
+        echo "`echo -e "$CONF_MAP" | grep $1=  | xargs -d "=" | grep $1 |awk '{print $2}'`"
+    fi
+}
+
+
+DEBUG=${DEBUG:-`get_conf debug`}
+DEBUG_ONLY_LOG=${DEBUG_ONLY_LOG:-`get_conf debug_only_log`} # only debug in logfile
+HAPROXY_SOCKET="${HAPROXY_SOCKET:-`get_conf ha_sock`}"
 QUERYING_METHOD="${QUERYING_METHOD:-SOCKET}"
-CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-/var/tmp/haproxy_stats.cache}"
-CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-5}" # in minutes
-CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-/var/tmp/haproxy_info.cache}" ## unused
-CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-5}" # in minutes ## unused
+CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-`get_conf ha_stats_cache_file`}"
+CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-`get_conf ha_stats_cache_expire`}" # in minutes
+CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-`get_conf ha_info_cache_expire`}" ## unused
+CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-`get_conf ha_info_cache_expire`}" # in minutes ## unused
+LOG_FILE="`get_conf stats_log_file`"
 GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
 SOCAT_BIN="$(which socat)"
 NC_BIN="$(which nc)"
-FLOCK_BIN="$(which flock)"
-FLOCK_WAIT=15 # maximum number of seconds that "flock" waits for acquiring a lock
-FLOCK_SUFFIX='.lock'
-CUR_TIMESTAMP="$(date '+%s')"
+
+LOG_TMP=""
+[ "${DEBUG}" -eq 1 ] && LOG_TMP=${LOG_TMP}"\n######__________ $(date) ____________\n" || true
 
 debug() {
-  [ "${DEBUG}" -eq 1 ] && echo "DEBUG: $@" >&2 || true
+  if [ "${DEBUG}" -eq 1 ]; then
+      if [ "${DEBUG_ONLY_LOG}" -ne 1 ]; then
+          echo "DEBUG: $@"
+      fi
+      LOG_TMP=${LOG_TMP}"\nDEBUG: $@"
+  fi
 }
 
+write_log() {
+    echo -e ${LOG_TMP} >> ${LOG_FILE}
+}
+
+fail() {
+    echo $2
+    debug $2
+    write_log
+    exit $1
+}
+
+
+debug "DEBUG_ONLY_LOG   => $DEBUG_ONLY_LOG"
 debug "SOCAT_BIN        => $SOCAT_BIN"
 debug "NC_BIN           => $NC_BIN"
-debug "FLOCK_BIN        => $FLOCK_BIN"
-debug "FLOCK_WAIT       => $FLOCK_WAIT seconds"
-debug "CACHE_FILEPATH   => $CACHE_FILEPATH"
-debug "CACHE_EXPIRATION => $CACHE_EXPIRATION minutes"
+debug "CACHE_STATS_FILEPATH   => $CACHE_STATS_FILEPATH"
+debug "CACHE_STATS_EXPIRATION => $CACHE_STATS_EXPIRATION minutes"
 debug "HAPROXY_SOCKET   => $HAPROXY_SOCKET"
 debug "pxname   => $pxname"
 debug "svname   => $svname"
@@ -51,8 +91,7 @@ debug "stat     => $stat"
 # check if socat is available in path
 if [ "$GET_STATS" -eq 1 ] && [[ $QUERYING_METHOD == "SOCKET" && -z "$SOCAT_BIN" ]] || [[ $QUERYING_METHOD == "TCP" &&  -z "$NC_BIN" ]]
 then
-  echo 'ERROR: cannot find socat binary'
-  exit 126
+  fail 126 'ERROR: cannot find socat binary'
 fi
 
 # if we are getting stats:
@@ -61,27 +100,25 @@ fi
 #   check if HAPROXY socket is writable
 # if we are NOT getting stats:
 #   check if we can read the stats cache file
-if [ "$GET_STATS" -eq 1 ]
-then
-  if [ -e "$CACHE_FILEPATH" ] && [ ! -w "$CACHE_FILEPATH" ]
-  then
-    echo 'ERROR: stats cache file exists, but is not writable'
-    exit 126
-  elif [ ! -w ${CACHE_FILEPATH%/*} ]
-  then
-    echo 'ERROR: stats cache file path is not writable'
-    exit 126
-  fi
-  if [[ $QUERYING_METHOD == "SOCKET" && ! -w $HAPROXY_SOCKET ]]
-  then
-    echo "ERROR: haproxy socket is not writable"
-    exit 126
-  fi
-elif [ ! -r "$CACHE_FILEPATH" ]
-then
-  echo 'ERROR: cannot read stats cache file'
-  exit 126
+if [ "$GET_STATS" -eq 1 ]; then
+    if [ -e "$CACHE_STATS_FILEPATH" ]; then
+        if [ ! -w "$CACHE_STATS_FILEPATH" ]; then
+            fail 126 'ERROR: stats cache file exists, but is not writable'
+        elif [ ! -s "$CACHE_STATS_FILEPATH" ]; then
+            debug "ERROR: stats cache file exists, but it's empty -> destroying it!"
+            rm -f "$CACHE_STATS_FILEPATH"
+            if [ $? -ne 0 ]; then
+                fail 126 "ERROR: problems deleting cache file, please check permissions!"
+            fi
+        fi
+    fi
+    if [[ $QUERYING_METHOD == "SOCKET" && ! -w $HAPROXY_SOCKET ]]; then
+        fail 126 "ERROR: haproxy socket is not writable"
+    fi
+elif [ ! -r "$CACHE_STATS_FILEPATH" ]; then
+    fail 126 'ERROR: cannot read stats cache file'
 fi
+
 
 # index:name:default
 MAP="
@@ -147,6 +184,7 @@ MAP="
 60:ctime:0
 61:rtime:0
 62:ttime:0
+0:acttot:0
 "
 
 _STAT=$(echo -e "$MAP" | grep :${stat}:)
@@ -160,8 +198,7 @@ debug "_DEFAULT => $_DEFAULT"
 # check if requested stat is supported
 if [ -z "${_STAT}" ]
 then
-  echo "ERROR: $stat is unsupported"
-  exit 127
+  fail 127 "ERROR: $stat is unsupported"
 fi
 
 # method to retrieve data from haproxy stats
@@ -175,57 +212,94 @@ query_stats() {
     fi
 }
 
-# a generic cache management function, that relies on 'flock'
-check_cache() {
-  local cache_type="${1}"
-  local cache_filepath="${2}"
-  local cache_expiration="${3}"  
-  local cache_filemtime
-  cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
-  if [ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} ]
-  then
-    debug "${cache_type} file found, results are at most ${cache_expiration} minutes stale.."
-  elif "${FLOCK_BIN}" --exclusive --wait "${FLOCK_WAIT}" 200
-  then
-    cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
-    if [ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} ]
-    then
-      debug "${cache_type} file found, results have just been updated by another process.."
-    else
-      debug "no ${cache_type} file found, querying haproxy"
-      query_stats "show ${cache_type}" > "${cache_filepath}"
-    fi
-  fi 200> "${cache_filepath}${FLOCK_SUFFIX}"
+# generate  cache file
+cache_gen() {
+  CTYPE=$1
+  debug "CTYPE=> $CTYPE"
+  if [[ ${CTYPE} == "stat" ]]; then
+      CFILE=$CACHE_STATS_FILEPATH
+      CTIME=$CACHE_STATS_EXPIRATION
+  else
+      CFILE=$CACHE_INFO_FILEPATH
+      CTIME=$CACHE_INFO_EXPIRATION
+  fi
+  find ${CFILE} -mmin +${CTIME} -delete >/dev/null 2>&1
+  if [[ ! -e ${CFILE} || ! -s ${CFILE}  ]]; then
+    debug "no ${CTYPE} cache file found, querying haproxy"
+    while [[ ! -e ${CFILE} && ! -s ${CFILE} ]]; do
+        debug "query_stats show ${CTYPE} > ${CFILE}"
+        query_stats "show ${CTYPE}" > ${CFILE}
+    done
+  else
+    debug "${CTYPE} cache file found, results are at most ${CTIME} minutes stale.."
+  fi
 }
-
-# generate stats cache file if needed
-get_stats() {
-  check_cache 'stat' "${CACHE_STATS_FILEPATH}" ${CACHE_STATS_EXPIRATION}
-}
+# generate stats cache file
+# get_stats() {
+  # find ${CACHE_STATS_FILEPATH} -mmin +${CACHE_STATS_EXPIRATION} -delete >/dev/null 2>&1
+  # if [[ ! -e ${CACHE_STATS_FILEPATH}  ]]
+  # then
+    # debug "no cache file found, querying haproxy"
+    # query_stats "show stat" > ${CACHE_STATS_FILEPATH}
+  # else
+    # debug "cache file found, results are at most ${CACHE_STATS_EXPIRATION} minutes stale.."
+  # fi
+# }
 
 # generate info cache file
 ## unused at the moment
 get_info() {
-  check_cache 'info' "${CACHE_INFO_FILEPATH}" ${CACHE_INFO_EXPIRATION}
+  find $CACHE_INFO_FILEPATH -mmin +${CACHE_INFO_EXPIRATION} -delete >/dev/null 2>&1
+  if [ ! -e $CACHE_INFO_FILEPATH ]
+  then
+    debug "no cache [info] file found, querying haproxy"
+    echo $(query_stats "show info") > ${CACHE_INFO_FILEPATH}
+  else
+    debug "cache [info] file found, results are at most ${CACHE_INFO_EXPIRATION} minutes stale.."
+  fi
 }
 
 # get requested stat from cache file using INDEX offset defined in MAP
 # return default value if stat is ""
 get() {
   # $1: pxname/svname
-  local _res="$("${FLOCK_BIN}" --shared --wait "${FLOCK_WAIT}" "${CACHE_STATS_FILEPATH}${FLOCK_SUFFIX}" grep $1 "${CACHE_STATS_FILEPATH}")"
-  if [ -z "${_res}" ]
-  then
-    echo "ERROR: bad $pxname/$svname"
-    exit 127
-  fi
-  _res="$(echo $_res | cut -d, -f ${_INDEX})"
+  # local _res="$(grep $1 ${CACHE_STATS_FILEPATH})"
+  # if [ -z "${_res}" ]
+  # then
+    # echo "ERROR: bad $pxname/$svname"
+    # fail 127
+  # fi
+  # _res="$(echo $_res | cut -d, -f ${_INDEX})"
+  local _res="$(echo $_res | cut -d, -f ${_INDEX})"
   if [ -z "${_res}" ] && [[ "${_DEFAULT}" != "@" ]]
   then
     echo "${_DEFAULT}"  
+    debug "return value (default) = ${_DEFAULT}"
   else
-    echo "${_res}"
+      if [ "${_res}" == "-1" ]; then 
+          echo "0" 
+          debug "return value (-1) = 0"
+      else 
+          echo "${_res}" 
+          debug "return value (_res) = ${_res}"
+      fi
   fi
+}
+
+# get number of total servers in "active" mode
+# this is needed to check the number of server there should be "UP"
+get_acttot () {
+    local _acttot=0
+    local tmpfile=`mktemp`
+    `grep "^${1}," ${CACHE_STATS_FILEPATH} | grep -v "BACKEND" | grep -v "FRONTEND" > ${tmpfile}`
+    while read line; do
+        debug "LINE: $line"
+        if [[ "$(echo \"${line}\" | cut -d, -f 20 )" -eq "1" ]]; then
+            _acttot=$((_acttot+1))
+        fi
+    done < ${tmpfile}
+    rm -f ${tmpfile}
+    echo "${_acttot}"
 }
 
 # not sure why we'd need to split on backslash
@@ -234,13 +308,31 @@ get() {
 #   get "^${pxname},${svnamem}," $stat | cut -d\  -f1
 # }
 
+# get_stats
+cache_gen stat
+# check if the "pxname/svname" exist before continue
+_res="$(grep "^${pxname},${svname}," ${CACHE_STATS_FILEPATH})"
+if [ -z "${_res}" ]
+then
+    fail 127 "ERROR: bad $pxname/$svname"
+fi
+
 # this allows for overriding default method of getting stats
 # name a function by stat name for additional processing, custom returns, etc.
+
 if type get_${stat} >/dev/null 2>&1
 then
   debug "found custom query function"
-  get_stats && get_${stat}
+  case ${stat} in
+      "acttot")
+            get_${stat} "${pxname}"
+            ;;
+      *) 
+            get_${stat}
+            ;;
+  esac
 else
   debug "using default get() method"
-  get_stats && get "^${pxname},${svname}," ${stat}
+  get "^${pxname},${svname}," ${stat}
 fi
+write_log
