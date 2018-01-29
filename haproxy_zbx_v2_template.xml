@@ -8620,7 +8620,7 @@ L7STS   -&gt; layer 7 response error, for example HTTP 5xx</description>
             <dependencies/>
         </trigger>
         <trigger>
-            <expression>{HAProxy:proc.num[haproxy].last()}&lt;1</expression>
+            <expression>{HAProxy:proc.num[haproxy].last(#1)}&lt;1</expression>
             <name>HAProxy is not running on {HOST.NAME}</name>
             <url/>
             <status>0</status>
