@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Get list of Frontends and Backends from HAPROXY
-# Example: ./haproxy_discovery.sh [/var/run/haproxy.sock] FRONTEND|BACKEND|SERVERS
+# Example: ./haproxy_discovery.sh [/var/run/haproxy/info.sock] FRONTEND|BACKEND|SERVERS
 # First argument is optional and should be used to set location of your HAPROXY socket
 # Second argument is should be either FRONTEND, BACKEND or SERVERS, will default to FRONTEND if not set
 #
@@ -14,7 +14,7 @@
 SCRIPT_DIR=`dirname $0`
 CONF_FILE="${SCRIPT_DIR}/haproxy_zbx.conf"
 CONF_MAP="
-ha_sock=/var/run/haproxy.sock
+ha_sock=/var/run/haproxy/info.sock
 debug=0
 discovery_log_file=/var/tmp/haproxy_discovery.log
 "
