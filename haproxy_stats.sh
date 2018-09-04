@@ -234,17 +234,6 @@ cache_gen() {
     debug "${CTYPE} cache file found, results are at most ${CTIME} minutes stale.."
   fi
 }
-# generate stats cache file
-# get_stats() {
-  # find ${CACHE_STATS_FILEPATH} -mmin +${CACHE_STATS_EXPIRATION} -delete >/dev/null 2>&1
-  # if [[ ! -e ${CACHE_STATS_FILEPATH}  ]]
-  # then
-    # debug "no cache file found, querying haproxy"
-    # query_stats "show stat" > ${CACHE_STATS_FILEPATH}
-  # else
-    # debug "cache file found, results are at most ${CACHE_STATS_EXPIRATION} minutes stale.."
-  # fi
-# }
 
 # generate info cache file
 ## unused at the moment
@@ -263,13 +252,6 @@ get_info() {
 # return default value if stat is ""
 get() {
   # $1: pxname/svname
-  # local _res="$(grep $1 ${CACHE_STATS_FILEPATH})"
-  # if [ -z "${_res}" ]
-  # then
-    # echo "ERROR: bad $pxname/$svname"
-    # fail 127
-  # fi
-  # _res="$(echo $_res | cut -d, -f ${_INDEX})"
   local _res="$(echo $_res | cut -d, -f ${_INDEX})"
   if [ -z "${_res}" ] && [[ "${_DEFAULT}" != "@" ]]
   then
