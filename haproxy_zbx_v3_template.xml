@@ -1409,7 +1409,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -1455,7 +1455,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -1501,7 +1501,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -1547,7 +1547,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -1593,7 +1593,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -3983,7 +3983,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -4029,7 +4029,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -4075,7 +4075,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -4121,7 +4121,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -4167,7 +4167,7 @@ Some other errors are:
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -6808,7 +6808,7 @@ L7STS   -&gt; layer 7 response error, for example HTTP 5xx</description>
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -6854,7 +6854,7 @@ L7STS   -&gt; layer 7 response error, for example HTTP 5xx</description>
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -6900,7 +6900,7 @@ L7STS   -&gt; layer 7 response error, for example HTTP 5xx</description>
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -6946,7 +6946,7 @@ L7STS   -&gt; layer 7 response error, for example HTTP 5xx</description>
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
@@ -6992,7 +6992,7 @@ L7STS   -&gt; layer 7 response error, for example HTTP 5xx</description>
                             <history>90</history>
                             <trends>365</trends>
                             <status>1</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <delta>0</delta>
