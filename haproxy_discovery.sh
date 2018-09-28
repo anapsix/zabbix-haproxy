@@ -13,26 +13,13 @@
 
 SCRIPT_DIR=`dirname $0`
 CONF_FILE="${SCRIPT_DIR}/haproxy_zbx.conf"
-CONF_MAP="
-ha_sock=/var/run/haproxy/info.sock
-debug=0
-discovery_log_file=/var/tmp/haproxy_discovery.log
-"
-get_conf() {
-    local conf_val=`grep $1= ${CONF_FILE} | xargs -d "=" | grep $1 |awk '{print $2}'`
-    if [ $conf_val ]; then
-        echo $conf_val
-    else
-        echo "`echo -e "$CONF_MAP" | grep $1=  | xargs -d "=" | grep $1 |awk '{print $2}'`"
-    fi
-}
-
 
 # default constant values - can be overridden by the $CONF_FILE
 HAPROXY_SOCK="/var/run/haproxy/info.sock"
 DEBUG=0
 DEBUG_ONLY_LOG=1
 DISCOVERY_LOG_FILE="/var/tmp/haproxy_discovery.log"
+QUERYING_METHOD="SOCKET"
 
 # constants override
 if [ -f ${CONF_FILE} ]; then
@@ -67,7 +54,9 @@ then
     QUERYING_METHOD="TCP"
 fi
 
-QUERYING_METHOD="${QUERYING_METHOD:-SOCKET}"
+debug "DEBUG_ONLY_LOG         => $DEBUG_ONLY_LOG"
+debug "DISCOVERY_LOG_FILE     => $DISCOVERY_LOG_FILE"
+debug "QUERYING_METHOD        => $QUERYING_METHOD"
 
 query_stats() {
     if [[ ${QUERYING_METHOD} == "SOCKET" ]]; then

@@ -65,6 +65,7 @@ fail() {
 }
 
 debug "DEBUG_ONLY_LOG         => $DEBUG_ONLY_LOG"
+debug "STATS_LOG_FILE         => $STATS_LOG_FILE"
 debug "SOCAT_BIN              => $SOCAT_BIN"
 debug "NC_BIN                 => $NC_BIN"
 debug "CACHE_STATS_FILEPATH   => $CACHE_STATS_FILEPATH"
