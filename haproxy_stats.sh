@@ -46,7 +46,7 @@ fi
 
 debug() {
     [[ "${DEBUG}" -eq 1 ]] || return  # return immediately if debug is disabled
-    echo "DEBUG: $@" >> ${LOG_FILE}
+    echo "DEBUG: $@" >> ${STATS_LOG_FILE}
     [[ "${DEBUG_ONLY_LOG}" -ne 1 ]] || return
     echo >&2 "DEBUG: $@"
 }
