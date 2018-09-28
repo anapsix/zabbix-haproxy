@@ -200,66 +200,56 @@ query_stats() {
 
 # a generic cache management function, that relies on 'flock'
 cache_gen() {
-  local cache_filemtime
-  local cache_filepath
-  local cache_expiration
-  local cache_type=$1
-  debug "cache_type => $cache_type"
-  if [[ ${cache_type} == "stat" ]]; then
-      cache_filepath=$CACHE_STATS_FILEPATH
-      cache_expiration=$CACHE_STATS_EXPIRATION
-  else
-      cache_filepath=$CACHE_INFO_FILEPATH
-      cache_expiration=$CACHE_INFO_EXPIRATION
-  fi
-  cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
-  if [[ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} && -s "${cache_filepath}" ]]
-  then
-    debug "${cache_type} file found, results are at most ${cache_expiration} minutes stale..."
-  elif "${FLOCK_BIN}" --exclusive --wait "${FLOCK_WAIT}" 200
-  then
-    cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
-    if [[ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} && -s "${cache_filepath}" ]]
-    then
-      debug "${cache_type} file found, results have just been updated by another process..."
+    local cache_filemtime
+    local cache_filepath
+    local cache_expiration
+    local cache_type=$1
+    debug "cache_type => $cache_type"
+    if [[ ${cache_type} == "stat" ]]; then
+        cache_filepath=$CACHE_STATS_FILEPATH
+        cache_expiration=$CACHE_STATS_EXPIRATION
     else
-      debug "${cache_type} file expired/empty/not_found, querying haproxy to refresh it"
-      query_stats "show ${cache_type}" > "${cache_filepath}"
+        cache_filepath=$CACHE_INFO_FILEPATH
+        cache_expiration=$CACHE_INFO_EXPIRATION
     fi
-  fi 200> "${cache_filepath}${FLOCK_SUFFIX}"
+    cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
+    if [[ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} && -s "${cache_filepath}" ]]; then
+        debug "${cache_type} file found, results are at most ${cache_expiration} minutes stale..."
+    elif "${FLOCK_BIN}" --exclusive --wait "${FLOCK_WAIT}" 200; then
+        cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
+        if [[ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} && -s "${cache_filepath}" ]]; then
+            debug "${cache_type} file found, results have just been updated by another process..."
+        else
+            debug "${cache_type} file expired/empty/not_found, querying haproxy to refresh it"
+            query_stats "show ${cache_type}" > "${cache_filepath}"
+        fi
+    fi 200> "${cache_filepath}${FLOCK_SUFFIX}"
 }
 
-# generate info cache file
-## unused at the moment
-get_info() {
-  find $CACHE_INFO_FILEPATH -mmin +${CACHE_INFO_EXPIRATION} -delete >/dev/null 2>&1
-  if [ ! -e $CACHE_INFO_FILEPATH ]
-  then
-    debug "no cache [info] file found, querying haproxy"
-    echo $(query_stats "show info") > ${CACHE_INFO_FILEPATH}
-  else
-    debug "cache [info] file found, results are at most ${CACHE_INFO_EXPIRATION} minutes stale.."
-  fi
+get_resource() {
+    local _res="$("${FLOCK_BIN}" --shared --wait "${FLOCK_WAIT}" "${CACHE_STATS_FILEPATH}${FLOCK_SUFFIX}" grep $1 "${CACHE_STATS_FILEPATH}")"
+    [[ -z ${_res} ]] && false
+    echo ${_res}
 }
 
 # get requested stat from cache file using INDEX offset defined in MAP
 # return default value if stat is ""
 get() {
   # $1: pxname/svname
-  local _res="$(echo $_res | cut -d, -f ${_INDEX})"
-  if [ -z "${_res}" ] && [[ "${_DEFAULT}" != "@" ]]
-  then
-    echo "${_DEFAULT}"  
-    debug "return value (default) = ${_DEFAULT}"
-  else
-      if [ "${_res}" == "-1" ]; then 
-          echo "0" 
-          debug "return value (-1) = 0"
-      else 
-          echo "${_res}" 
-          debug "return value (_res) = ${_res}"
-      fi
-  fi
+    local _res=$(get_resource "$1")
+    [[ ! ${_res} ]] && fail 127 "ERROR: bad $pxname/$svname"
+    debug "full_line resource stats: "${_res}
+    _res="$(echo $_res | cut -d, -f ${_INDEX})"
+    if [ -z "${_res}" ] && [[ "${_DEFAULT}" != "@" ]]; then
+        echo "${_DEFAULT}"  
+        debug "return value (default) = ${_DEFAULT}"
+    elif [ "${_res}" == "-1" ]; then 
+        echo "0" 
+        debug "return value (-1) = 0"
+    else 
+        echo "${_res}" 
+        debug "return value (_res) = ${_res}"
+    fi
 }
 
 # get number of total servers in "active" mode
@@ -286,28 +276,22 @@ get_acttot () {
 
 # get_stats
 cache_gen stat
-# check if the "pxname/svname" exist before continue
-_res="$(grep "^${pxname},${svname}," ${CACHE_STATS_FILEPATH})"
-if [ -z "${_res}" ]
-then
-    fail 127 "ERROR: bad $pxname/$svname"
-fi
 
 # this allows for overriding default method of getting stats
 # name a function by stat name for additional processing, custom returns, etc.
 
 if type get_${stat} >/dev/null 2>&1
 then
-  debug "found custom query function"
-  case ${stat} in
-      "acttot")
+    debug "found custom query function"
+    case ${stat} in
+        "acttot")
             get_${stat} "${pxname}"
             ;;
-      *) 
+        *) 
             get_${stat}
             ;;
-  esac
+    esac
 else
-  debug "using default get() method"
-  get "^${pxname},${svname}," ${stat}
+    debug "using default get() method"
+    get "^${pxname},${svname},"
 fi
