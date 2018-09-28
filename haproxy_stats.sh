@@ -53,37 +53,38 @@ LOG_FILE="`get_conf stats_log_file`"
 GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
 SOCAT_BIN="$(which socat)"
 NC_BIN="$(which nc)"
+FLOCK_BIN="$(which flock)"
+FLOCK_WAIT=15 # maximum number of seconds that "flock" waits for acquiring a lock
+FLOCK_SUFFIX='.lock'
+CUR_TIMESTAMP="$(date '+%s')"
 
-LOG_TMP=""
-[ "${DEBUG}" -eq 1 ] && LOG_TMP=${LOG_TMP}"\n######__________ $(date) ____________\n" || true
 
 debug() {
-  if [ "${DEBUG}" -eq 1 ]; then
-      if [ "${DEBUG_ONLY_LOG}" -ne 1 ]; then
-          echo "DEBUG: $@"
-      fi
-      LOG_TMP=${LOG_TMP}"\nDEBUG: $@"
-  fi
-}
-
-write_log() {
-    echo -e ${LOG_TMP} >> ${LOG_FILE}
+    [[ "${DEBUG}" -eq 1 ]] || return  # return immediately if debug is disabled
+    echo "DEBUG: $@" >> ${LOG_FILE}
+    [[ "${DEBUG_ONLY_LOG}" -ne 1 ]] || return
+    echo >&2 "DEBUG: $@"
 }
 
 fail() {
-    echo $2
-    debug $2
-    write_log
-    exit $1
+    local _exit_code=${1:-1}
+    shift 1
+    if [[ -n "$1" ]]; then
+        if [[ "${DEBUG}" -eq 0 ]]; then
+            echo >&2 "$@"
+        else
+            debug "$@"
+        fi
+    fi
+  exit $_exit_code
 }
 
-
-debug "DEBUG_ONLY_LOG   => $DEBUG_ONLY_LOG"
-debug "SOCAT_BIN        => $SOCAT_BIN"
-debug "NC_BIN           => $NC_BIN"
+debug "DEBUG_ONLY_LOG         => $DEBUG_ONLY_LOG"
+debug "SOCAT_BIN              => $SOCAT_BIN"
+debug "NC_BIN                 => $NC_BIN"
 debug "CACHE_STATS_FILEPATH   => $CACHE_STATS_FILEPATH"
 debug "CACHE_STATS_EXPIRATION => $CACHE_STATS_EXPIRATION minutes"
-debug "HAPROXY_SOCKET   => $HAPROXY_SOCKET"
+debug "HAPROXY_SOCKET         => $HAPROXY_SOCKET"
 debug "pxname   => $pxname"
 debug "svname   => $svname"
 debug "stat     => $stat"
@@ -212,27 +213,35 @@ query_stats() {
     fi
 }
 
-# generate  cache file
+# a generic cache management function, that relies on 'flock'
 cache_gen() {
-  CTYPE=$1
-  debug "CTYPE=> $CTYPE"
-  if [[ ${CTYPE} == "stat" ]]; then
-      CFILE=$CACHE_STATS_FILEPATH
-      CTIME=$CACHE_STATS_EXPIRATION
+  local cache_filemtime
+  local cache_filepath
+  local cache_expiration
+  local cache_type=$1
+  debug "cache_type => $cache_type"
+  if [[ ${cache_type} == "stat" ]]; then
+      cache_filepath=$CACHE_STATS_FILEPATH
+      cache_expiration=$CACHE_STATS_EXPIRATION
   else
-      CFILE=$CACHE_INFO_FILEPATH
-      CTIME=$CACHE_INFO_EXPIRATION
+      cache_filepath=$CACHE_INFO_FILEPATH
+      cache_expiration=$CACHE_INFO_EXPIRATION
   fi
-  find ${CFILE} -mmin +${CTIME} -delete >/dev/null 2>&1
-  if [[ ! -e ${CFILE} || ! -s ${CFILE}  ]]; then
-    debug "no ${CTYPE} cache file found, querying haproxy"
-    while [[ ! -e ${CFILE} && ! -s ${CFILE} ]]; do
-        debug "query_stats show ${CTYPE} > ${CFILE}"
-        query_stats "show ${CTYPE}" > ${CFILE}
-    done
-  else
-    debug "${CTYPE} cache file found, results are at most ${CTIME} minutes stale.."
-  fi
+  cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
+  if [[ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} && -s "${cache_filepath}" ]]
+  then
+    debug "${cache_type} file found, results are at most ${cache_expiration} minutes stale..."
+  elif "${FLOCK_BIN}" --exclusive --wait "${FLOCK_WAIT}" 200
+  then
+    cache_filemtime=$(stat -c '%Y' "${cache_filepath}" 2> /dev/null)
+    if [[ $((cache_filemtime+60*cache_expiration)) -ge ${CUR_TIMESTAMP} && -s "${cache_filepath}" ]]
+    then
+      debug "${cache_type} file found, results have just been updated by another process..."
+    else
+      debug "${cache_type} file expired/empty/not_found, querying haproxy to refresh it"
+      query_stats "show ${cache_type}" > "${cache_filepath}"
+    fi
+  fi 200> "${cache_filepath}${FLOCK_SUFFIX}"
 }
 
 # generate info cache file
@@ -317,4 +326,3 @@ else
   debug "using default get() method"
   get "^${pxname},${svname}," ${stat}
 fi
-write_log
