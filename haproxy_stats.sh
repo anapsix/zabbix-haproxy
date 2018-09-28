@@ -20,37 +20,18 @@ stat="$3"
 
 SCRIPT_DIR=`dirname $0`
 CONF_FILE="${SCRIPT_DIR}/haproxy_zbx.conf"
-CONF_MAP="
-ha_sock=/var/run/haproxy/info.sock
-ha_stats_cache_file=/var/tmp/haproxy_stat.cache
-ha_stats_cache_expire=5
-ha_info_cache_file=/var/tmp/haproxy_info.cache
-ha_info_cache_expire=5
-ha_info_cache_expires=6
-debug=0
-debug_only_log=0
-stats_log_file=/var/tmp/haproxy_stat.log
-"
-get_conf() {
-    local conf_val=`grep $1= ${CONF_FILE} | grep -v "^#" | xargs -d "=" | grep $1 |awk '{print $2}'`
-    if [ $conf_val ]; then
-        echo $conf_val
-    else
-        echo "`echo -e "$CONF_MAP" | grep $1=  | xargs -d "=" | grep $1 |awk '{print $2}'`"
-    fi
-}
 
-
-DEBUG=${DEBUG:-`get_conf debug`}
-DEBUG_ONLY_LOG=${DEBUG_ONLY_LOG:-`get_conf debug_only_log`} # only debug in logfile
-HAPROXY_SOCKET="${HAPROXY_SOCKET:-`get_conf ha_sock`}"
-QUERYING_METHOD="${QUERYING_METHOD:-SOCKET}"
-CACHE_STATS_FILEPATH="${CACHE_STATS_FILEPATH:-`get_conf ha_stats_cache_file`}"
-CACHE_STATS_EXPIRATION="${CACHE_STATS_EXPIRATION:-`get_conf ha_stats_cache_expire`}" # in minutes
-CACHE_INFO_FILEPATH="${CACHE_INFO_FILEPATH:-`get_conf ha_info_cache_expire`}" ## unused
-CACHE_INFO_EXPIRATION="${CACHE_INFO_EXPIRATION:-`get_conf ha_info_cache_expire`}" # in minutes ## unused
-LOG_FILE="`get_conf stats_log_file`"
-GET_STATS=${GET_STATS:-1} # when you update stats cache outsise of the script
+# default constant values - can be overridden by the $CONF_FILE
+DEBUG=0
+DEBUG_ONLY_LOG=0  # only debug in logfile
+HAPROXY_SOCKET="/var/run/haproxy/info.sock"
+QUERYING_METHOD="SOCKET"
+CACHE_STATS_FILEPATH="/var/tmp/haproxy_stat.cache"
+CACHE_STATS_EXPIRATION=1  # in minutes
+CACHE_INFO_FILEPATH="/var/tmp/haproxy_info.cache"  ## unused
+CACHE_INFO_EXPIRATION=1  # in minutes ## unused
+STATS_LOG_FILE="/var/tmp/haproxy_stat.log"
+GET_STATS=1  # when you update stats cache outsise of the script
 SOCAT_BIN="$(which socat)"
 NC_BIN="$(which nc)"
 FLOCK_BIN="$(which flock)"
@@ -58,6 +39,10 @@ FLOCK_WAIT=15 # maximum number of seconds that "flock" waits for acquiring a loc
 FLOCK_SUFFIX='.lock'
 CUR_TIMESTAMP="$(date '+%s')"
 
+# constants override
+if [ -f ${CONF_FILE} ]; then
+    source ${CONF_FILE}
+fi
 
 debug() {
     [[ "${DEBUG}" -eq 1 ]] || return  # return immediately if debug is disabled

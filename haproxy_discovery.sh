@@ -28,7 +28,37 @@ get_conf() {
 }
 
 
-HAPROXY_SOCK="`get_conf ha_sock`"
+# default constant values - can be overridden by the $CONF_FILE
+HAPROXY_SOCK="/var/run/haproxy/info.sock"
+DEBUG=0
+DEBUG_ONLY_LOG=1
+DISCOVERY_LOG_FILE="/var/tmp/haproxy_discovery.log"
+
+# constants override
+if [ -f ${CONF_FILE} ]; then
+    source ${CONF_FILE}
+fi
+
+debug() {
+    [[ "${DEBUG}" -eq 1 ]] || return  # return immediately if debug is disabled
+    echo "DEBUG: $@" >> ${DISCOVERY_LOG_FILE}
+    [[ "${DEBUG_ONLY_LOG}" -ne 1 ]] || return
+    echo >&2 "DEBUG: $@"
+}
+
+fail() {
+    local _exit_code=${1:-1}
+    shift 1
+    if [[ -n "$1" ]]; then
+        if [[ "${DEBUG}" -eq 0 ]]; then
+            echo >&2 "$@"
+        else
+            debug "$@"
+        fi
+    fi
+  exit $_exit_code
+}
+
 [ -n "$1" ] && echo $1 | grep -q ^/ && HAPROXY_SOCK="$(echo $1 | tr -d '\040\011\012\015')"
 
 if [[ "$1" =~ (25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):[0-9]{1,5} ]];
