@@ -54,31 +54,50 @@ global
 
 ```
 
->**MAKE SURE TO HAVE APPROPRIATE PERMISSIONS ON HAPROXY SOCKET**  
->You can specify what permissions a stats socker file will be created with in `haproxy.cfg`. When using non-admin socket for stats, it's _mostly_ safe to allow very loose permissions (0666).  
->You can even use something more restrictive like 0660, as long as you add Zabbix Agent's running user (usually "zabbix") to the HAProxy group (usually "haproxy").  
->This way you don't have to prepend `socat` with `sudo` in `userparameter_haproxy.conf` to make sure Zabbix Agent can access the socket. And you don't have to create `/etc/sudoers` entry for Zabbix. And don't need to remember to make it restrictive, avoiding all implication of misconfiguring use of SUDO.  
->The symptom of permissions problem on the socket is the following error from Zabbix Agent:  
+>**MAKE SURE TO HAVE APPROPRIATE PERMISSIONS ON HAPROXY SOCKET**
+>You can specify what permissions a stats socket file will be created with in `haproxy.cfg`. When using non-admin socket for stats, it's _mostly_ safe to allow very loose permissions (0666).
+>You can even use something more restrictive like 0660, as long as you add Zabbix Agent's running user (usually "zabbix") to the HAProxy group (usually "haproxy").
+>This way you don't have to prepend `socat` with `sudo` in `userparameter_haproxy.conf` to make sure Zabbix Agent can access the socket. And you don't have to create `/etc/sudoers` entry for Zabbix. And don't need to remember to make it restrictive, avoiding all implication of misconfiguring use of SUDO.
+>The symptom of permissions problem on the socket is the following error from Zabbix Agent:
 >`Received value [] is not suitable for value type [Numeric (unsigned)] and data type [Decimal]`
 
 * Verify on server with HAProxy installed:
 ```
 anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[FRONTEND]
   haproxy.list.discovery[FRONTEND]              [t|{"data":[{"{#FRONTEND_NAME}":"http-frontend"},{"{#FRONTEND_NAME}":"https-frontend"}]}]
-    
+
 anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[BACKEND]
   haproxy.list.discovery[BACKEND]               [t|{"data":[{"{#BACKEND_NAME}":"www-backend"},{"{#BACKEND_NAME}":"api-backend"}]}]
-    
+
 anapsix@lb1:~$ sudo zabbix_agentd -t haproxy.list.discovery[SERVERS]
   haproxy.list.discovery[SERVERS]               [t|{"data":[{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www01"},{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www02"},{"{#BACKEND_NAME}":"www-backend","{#SERVER_NAME}":"www03"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api01"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api02"},{"{#BACKEND_NAME}":"api-backend","{#SERVER_NAME}":"api03"}]}]
 ```
 
 * Add hosts with HAProxy installed to just imported Zabbix HAProxy template.
-* Wait for discovery.. Frontend(s), Backend(s) and Server(s) should show up under Host Items.  
+* Wait for discovery.. Frontend(s), Backend(s) and Server(s) should show up under Host Items.
    An easy way to see all data is via _Overview_ (make sure to pick right Group, one of the "HAProxy" applications and select _Data_ as Type)
 
 
 ### Troubleshooting
+
+#### Security
+SELinux might be preventing the check from using the socket.
+```
+# check your audit logs
+$ tail -f /var/log/audit/audit.log
+
+# get more details
+$ tail -n100 -f /var/log/audit/audit.log | audit2why
+
+# look for haproxy related messages
+$ tail -n100 -f /var/log/audit/audit.log | grep haproxy | audit2why
+```
+
+You can try temporarily disabling SELinux, while testing. It's up to you to re-enable it.
+```
+# disable SELinux, make sure to re-enable it, if you are relying on SELinux
+$ setenforce 0
+```
 
 #### Discover
 ```
@@ -102,8 +121,8 @@ $2 is FRONTEND or BACKEND or SERVERS
 # haproxy_stats.sh www-backend BACKEND status
 # haproxy_stats.sh https-frontend FRONTEND status
 ```
- 
-> For the list of stats HAProxy supports as of version 1.5  
+
+> For the list of stats HAProxy supports as of version 1.5
 > see TEXT: http://www.haproxy.org/download/1.5/doc/configuration.txt
 > see HTML: http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#9.1
 
@@ -132,19 +151,19 @@ echo "show stat" | socat /var/run/haproxy/info.sock stdio
 [MIT License](http://opensource.org/licenses/MIT)
 
     The MIT License (MIT)
-    
-    Copyright (c) 2015 "Anastas Dancha <anapsix@random.io>"
-    
+
+    Copyright (c) 2015-2020 "Anastas Dancha <anapsix@random.io>"
+
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
     in the Software without restriction, including without limitation the rights
     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
     copies of the Software, and to permit persons to whom the Software is
     furnished to do so, subject to the following conditions:
-    
+
     The above copyright notice and this permission notice shall be included in
     all copies or substantial portions of the Software.
-    
+
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
